@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Сигнали Pocket Option</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+  select, button { font-size: 16px; padding: 5px; margin: 10px 0; }
+  #signal { font-weight: bold; font-size: 24px; margin-top: 20px; }
+  .buy { color: green; }
+  .sell { color: red; }
+  .hold { color: gray; }
+</style>
+</head>
+<body>
+
+<h2>Сигнали купівлі/продажу валютних пар (5 хв таймфрейм)</h2>
+
+<label for="pairSelect">Виберіть валютну пару:</label>
+<select id="pairSelect">
+  <option>EUR/USD</option>
+  <option>GBP/USD</option>
+  <option>USD/JPY</option>
+  <option>AUD/USD</option>
+  <option>USD/CAD</option>
+  <option>USD/CHF</option>
+  <option>NZD/USD</option>
+  <option>EUR/GBP</option>
+  <option>EUR/JPY</option>
+  <option>GBP/JPY</option>
+</select>
+
+<button onclick="generateSignal()">Отримати сигнал</button>
+
+<div id="signal" class="hold">Очікування сигналу...</div>
+
+<script>
+// --- Функції для індикаторів ---
+// EMA
+function calculateEMA(data, period) {
+  const k = 2 / (period + 1);
+  let emaArray = [];
+  // Перший EMA = проста середня перших period значень
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += data[i];
+  let emaPrev = sum / period;
+  emaArray[period - 1] = emaPrev;
+  for (let i = period; i < data.length; i++) {
+    emaPrev = data[i] * k + emaPrev * (1 - k);
+    emaArray[i] = emaPrev;
+  }
+  return emaArray;
+}
+
+// RSI
+function calculateRSI(data, period = 14) {
+  let gains = 0, losses = 0;
+  let rsiArray = [];
+  for(let i = 1; i <= period; i++){
+    const diff = data[i] - data[i - 1];
+    if(diff > 0) gains += diff; else losses -= diff;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  let rs = avgGain / (avgLoss || 1e-10);
+  rsiArray[period] = 100 - (100 / (1 + rs));
+  for(let i = period + 1; i < data.length; i++) {
+    const diff = data[i] - data[i - 1];
+    let gain = diff > 0 ? diff : 0;
+    let loss = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    rs = avgGain / (avgLoss || 1e-10);
+    rsiArray[i] = 100 - (100 / (1 + rs));
+  }
+  return rsiArray;
+}
+
+// MACD
+function calculateMACD(data, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+  const emaFast = calculateEMA(data, fastPeriod);
+  const emaSlow = calculateEMA(data, slowPeriod);
+  let macdLine = [];
+  for (let i = 0; i < data.length; i++) {
+    if(emaFast[i] !== undefined && emaSlow[i] !== undefined) {
+      macdLine[i] = emaFast[i] - emaSlow[i];
+    } else {
+      macdLine[i] = undefined;
+    }
+  }
+  const signalLine = calculateEMA(macdLine.filter(x => x !== undefined), signalPeriod);
+  // Підгонка розмірів сигналу під macdLine, зсунемо signalLine по індексах
+  let fullSignalLine = [];
+  let signalIndexStart = macdLine.findIndex(x => x !== undefined) + signalPeriod - 1;
+  for(let i=0; i < macdLine.length; i++) {
+    if(i >= signalIndexStart) {
+      fullSignalLine[i] = signalLine[i - signalIndexStart];
+    } else {
+      fullSignalLine[i] = undefined;
+    }
+  }
+  return { macdLine, signalLine: fullSignalLine };
+}
+
+// Симуляція котирувань (замінити на реальні дані через API)
+function generateRandomPrices(length = 100, basePrice = 1.1) {
+  let prices = [basePrice];
+  for(let i = 1; i < length; i++) {
+    // невеликий випадковий рух
+    let change = (Math.random() - 0.5) * 0.002; 
+    prices[i] = +(prices[i-1] + change).toFixed(5);
+  }
+  return prices;
+}
+
+// Основна логіка для сигналу
+function generateSignal() {
+  const pair = document.getElementById('pairSelect').value;
+  // Для прикладу – різний basePrice для кожної пари (щоб варіація була)
+  const basePrices = {
+    "EUR/USD": 1.1000,
+    "GBP/USD": 1.2500,
+    "USD/JPY": 135.00,
+    "AUD/USD": 0.6700,
+    "USD/CAD": 1.3500,
+    "USD/CHF": 0.9200,
+    "NZD/USD": 0.6100,
+    "EUR/GBP": 0.8800,
+    "EUR/JPY": 148.00,
+    "GBP/JPY": 169.00
+  };
+  const prices = generateRandomPrices(100, basePrices[pair]);
+  
+  // Розрахунок індикаторів
+  const ema20 = calculateEMA(prices, 20);
+  const ema50 = calculateEMA(prices, 50);
+  const rsi = calculateRSI(prices, 14);
+  const macd = calculateMACD(prices);
+  const lastIndex = prices.length - 1;
+  
+  // Сигнал за EMA кросовером
+  let emaSignal = 'HOLD';
+  if(ema20[lastIndex] !== undefined && ema50[lastIndex] !== undefined) {
+    const prevIndex = lastIndex - 1;
+    if(ema20[prevIndex] < ema50[prevIndex] && ema20[lastIndex] > ema50[lastIndex]) {
+      emaSignal = 'BUY';
+    } else if(ema20[prevIndex] > ema50[prevIndex] && ema20[lastIndex] < ema50[lastIndex]) {
+      emaSignal = 'SELL';
+    }
+  }
+
+  // Сигнал за RSI
+  let rsiSignal = 'HOLD';
+  if(rsi[lastIndex] !== undefined) {
+    if(rsi[lastIndex] < 30) rsiSignal = 'BUY';
+    else if(rsi[lastIndex] > 70) rsiSignal = 'SELL';
+  }
+
+  // Сигнал за MACD
+  let macdSignal = 'HOLD';
+  if(macd.macdLine[lastIndex] !== undefined && macd.signalLine[lastIndex] !== undefined) {
+    const prevIndex = lastIndex - 1;
+    if(macd.macdLine[prevIndex] < macd.signalLine[prevIndex] && macd.macdLine[lastIndex] > macd.signalLine[lastIndex]) {
+      macdSignal = 'BUY';
+    } else if(macd.macdLine[prevIndex] > macd.signalLine[prevIndex] && macd.macdLine[lastIndex] < macd.signalLine[lastIndex]) {
+      macdSignal = 'SELL';
+    }
+  }
+
+  // Проста логіка: якщо всі 3 індикатори дають BUY - покупка, всі SELL - продаж, інакше HOLD
+  let finalSignal = 'HOLD';
+  if(emaSignal === 'BUY' && rsiSignal === 'BUY' && macdSignal === 'BUY') finalSignal = 'BUY';
+  else if(emaSignal === 'SELL' && rsiSignal === 'SELL' && macdSignal === 'SELL') finalSignal = 'SELL';
+
+  const signalDiv = document.getElementById('signal');
+  signalDiv.textContent = `Сигнал для ${pair}: ${finalSignal}`;
+  signalDiv.className = finalSignal.toLowerCase();
+}
+</script>
+
+</body>
+</html>

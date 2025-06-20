@@ -1,0 +1,84 @@
+/* styles.css */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f5f7fa;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+header {
+  background-color: #283e4a;
+  color: #fff;
+  padding: 20px;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+main {
+  max-width: 700px;
+  margin: 30px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+}
+
+.signal {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 15px;
+  border-radius: 8px;
+  user-select: none;
+  margin-bottom: 20px;
+}
+
+.signal.buy {
+  background-color: #28a745;
+  color: white;
+}
+
+.signal.sell {
+  background-color: #dc3545;
+  color: white;
+}
+
+.history {
+  font-size: 0.95rem;
+  color: #444;
+  background: #eef2f4;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+footer {
+  text-align: center;
+  color: #666;
+  padding: 10px;
+  font-size: 0.9rem;
+  margin-top: 40px;
+}
+
+@media (max-width: 480px) {
+  main {
+    margin: 10px;
+    padding: 15px;
+  }
+} 
